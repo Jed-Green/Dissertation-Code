@@ -15,7 +15,8 @@ All of the data used was downloaded from the original source and has not been re
 
 Below is a list of all packages used:
 
-```{r}library(haven)}
+```{r}
+library(haven)
 library(ggplot2)
 library(stargazer)
 library(ltm)
@@ -321,7 +322,7 @@ cor_df1<-data.frame(df[, c("W4_Age_year",
                           "W4_Gender_Binary",
                           "W4_Visible_minority",
                           "W4_Education_categories_Num1",
-                          "W4_Income_2019_1",
+                          "W4_Income_2019",
                           "W4_Political_scale",
                           "W4_Extraversion_Total",
                           "W4_Agreeable_Total",
@@ -338,7 +339,7 @@ cor_df1<-data.frame(df[, c("W4_Age_year",
 cor_df1$W4_Education_categories_Num1 <- as.numeric(as.character(cor_df1$W4_Education_categories_Num1))
 
 # Convert 'W4_Income_2019' from labelled variable to numeric
-cor_df1$W4_Income_2019_1 <- as.numeric(labels(cor_df1$W4_Income_2019)[cor_df1$W4_Income_2019])
+cor_df1$W4_Income_2019 <- as.numeric(labels(cor_df1$W4_Income_2019)[cor_df1$W4_Income_2019])
 
 # Convert 'W4_PTSDdx' from labelled variable to numeric
 cor_df1$W4_PTSDdx <- as.numeric(as.character(cor_df1$W4_PTSDdx))
@@ -355,7 +356,7 @@ p_values <- cor.mtest(cor_df1, conf.level = 0.95)$p
 # Create a correlation plot with colors, highlighting significant correlations
 corrplot(cor_matrix1, method = "color", type = "upper", tl.col = "black", tl.srt = 45, p.mat = p_values,sig.level = c(0.001, 0.01, 0.05), pch.cex = 0.9, insig = 'label_sig', pch.col = 'grey20', order = "AOE",number.cex = 0.7, tl.cex = 0.7, mar = c(0,0,2,0))
 
-# Create a correlation plot with colors, highlighting  correlations coefficents
+# Create a correlation plot with colors, highlighting  correlations coefficients
 corrplot(cor_matrix1, method = "color", type = "upper", tl.col = "black", tl.srt = 45,order = "AOE",number.cex = 0.7, tl.cex = 0.7,mar = c(0,0,2,0))$corrPos -> p1
 text(p1$x, p1$y, round(p1$corr, 2), cex = 0.5)
 
