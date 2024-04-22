@@ -1,5 +1,21 @@
-### Dissertation code
-library(haven)
+---
+title: "Dissertation"
+author: "Jed Green"
+date: "2024-04-22"
+output: word_document
+---
+
+# Dissertation markdown script:
+
+This is the R markdown for my dissertation titled: Psychological Borders: Exploring Attitudes Towards Migrants in the UK from a Psychological Perspective. I have made this (in conjunction with making all my code publicly available) with the intent of making my research more transparent and reproducible.
+
+All of the data used was downloaded from the original source and has not been re-uploaded here. To gain access to it please visit: <https://www.sheffield.ac.uk/psychology-consortium-covid19>
+
+### Packages:
+
+Below is a list of all packages used:
+
+```{r}library(haven)}
 library(ggplot2)
 library(stargazer)
 library(ltm)
@@ -8,23 +24,33 @@ library(dplyr)
 library(car)
 library(corrplot)
 library(summarytools)
+```
 
+### Importing, filtering and merging the data:
+
+Not all of the measures used in this paper were available in the same wave of the survey. This is due to certain metrics only being asked to new respondents in wave 4 (such as educational level and political scale). Therefore, we need to merge this missing data from previous waves when these respondents answered these exact same questions as posited in wave 4. Below is the code we used to do this.
+
+```{r}
+# Loading in main W4 Data:
 original_df<-read_sav("C19PRC_UK_W4_archive_final.sav")
 
+# Loading in previous waves data with the anwsers to the missing W4 data
 edudf<-read_sav("C19PRC_UKW1W2_archive_final.sav")
 edudf1<-read_sav("C19PRC_UK_W3_archive_final.sav")
 
+# Filtering dataframes to contain only the variables we wish to merge
 ldf1<-as.data.frame(cbind(edudf$pid,edudf$W1_Education, edudf$W1_Political_Scale))
 colnames(ldf1)<-c("pid","W1_Edu", "W1_Political_Scale")
 
 ldf2<-as.data.frame(cbind(edudf1$pid,edudf1$W3_Education, edudf1$W3_Political_Scale))
 colnames(ldf2)<-c("pid","W2_Edu","W3_Political_Scale")
 
+# Merging all of the data into a single dataframe
 mdf1<-merge.data.frame(original_df,ldf1, by ="pid", all = T)
 mdf2<-merge.data.frame(mdf1,ldf2, by ="pid", all = T)
 
 
-# Replace missing values in W4_Education using W1_Edu or W2_Edu
+# Replace missing values in W4_Education using responses from W1 or W2
 mdf2 <- mdf2 %>%
   mutate(W4_Education = ifelse(is.na(W4_Education), ifelse(W4_Type == 1, coalesce(W1_Edu, W2_Edu), NA), W4_Education))
 
@@ -32,10 +58,12 @@ mdf2 <- mdf2 %>%
 mdf2 <- mdf2 %>%
   mutate(W4_Education = ifelse(W4_Type == 1 & is.na(W4_Education), coalesce(W1_Edu, W2_Edu), W4_Education)) # Filter out rows where W4_Type is NA
 
+# Remove the added variables from previous waves which are no longer needed
 mdf2 <- mdf2 %>%
   select(-W1_Edu, -W2_Edu)
 mdf2$W4_Education <- as.numeric(as.character(mdf2$W4_Education))
 
+# Replace missing values in W4_Political_Scale using responses from W1 or W2
 mdf2 <- mdf2 %>%
   mutate(W4_Political_scale = ifelse(is.na(W4_Political_scale), ifelse(W4_Type == 1, coalesce(W1_Political_Scale, W3_Political_Scale), NA), W4_Political_scale))
 
@@ -44,117 +72,48 @@ mdf2 <- mdf2 %>%
   mutate(W4_Political_scale = ifelse(W4_Type == 1 & is.na(W4_Political_scale), coalesce(W1_Political_Scale, W3_Political_Scale), W4_Political_scale)) %>%
   filter(!is.na(W4_Type))
 
+# Remove the added variables from previous waves which are no longer needed
 mdf2 <- mdf2 %>%
   select(-W1_Political_Scale, -W3_Political_Scale)
 mdf2$W4_Political_scale<- as.numeric(as.character(mdf2$W4_Political_scale))
 
+# Rename dataframe for ease of use
 df<-mdf2
 
-
-### Remove anyone who isn't born in the UK
-
+# Remove anyone who isn't born in the UK
 df<- subset(df,df$W4_WhereBorn != 5)
+```
 
-### Initial descriptive statistics on dependent variables:
+### Coding dependent variable:
 
-hist(df$W4_MigrantAttitudes1,
-     breaks = 10,
-     xlim = c(1,10),
-     ylim = c(0,700),
-     xlab = "Opinion on migrant impact on the economy",
-     main = "Opinion on migrant impact on the economy")
+In order to create our dependent variable we first need to re-scale some of measures and then add them into an additive scale
 
-hist(df$W4_MigrantAttitudes2,
-     breaks = 10,
-     xlim = c(1,10),
-     ylim = c(0,700),
-     xlab = "Opinion on migrant impact on the culture",
-     main = "Opinion on migrant impact on the culture")
-
-hist(df$W4_MigrantAttitudes3,
-     xlim = c(1,5),
-     ylim = c(0,1000),
-     xlab = "Opinion on migrant impact on the education",
-     main = "Opinion on migrant impact on the education")
-
-hist(df$W4_Immigration_1,
-     xlim = c(1,5),
-     ylim = c(0,1500),
-     xlab = "Diverse mix of people make country better",
-     main = "Diverse mix of people make country better")
-
-hist(df$W4_Immigration_2,
-     xlim = c(1,5),
-     ylim = c(0,1500),
-     xlab = "Sharing customs and traditions is better",
-     main = "Sharing customs and traditions is better")
-
-### Initial descriptive statistics on independent variables
-
-hist(df$W4_Dep_Total,
-     breaks = 30,
-     xlim = c(0,30),
-     ylim = c(0,1500),
-     xlab = "PHQ-9 Total Test Score",
-     main = "Histogram of PHQ-9 Total Test Score")
-
-hist(df$W4_GAD_Total,
-     breaks = 25,
-     xlim = c(0,25),
-     ylim = c(0,2000),
-     xlab = "GAD-7 Total Test Score",
-     main = "Histogram of GAD-7 Total Test Score")
-
-hist(df$W4_EmpathyEC_Total,
-     breaks = 20,
-     xlim = c(0,20),
-     ylim = c(0,400),
-     xlab = "EmpathyEc Total Score",
-     main = "Histogram of EmpathyEc Total Score")
-
-barplot(table(df$W4_Religion_binary),
-        ylim = c(0,2000),
-        xlab = "Religious or not",
-        main = "barplot representing the number of people who say they are religious or not"
-        )
-
-hist(df$W4_Conspiracy_Total,
-     breaks = 20,
-     xlim = c(0,60),
-     ylim = c(0,700),
-     xlab = "Conspiracy total score",
-     main = "Histogram of Conspiracy total score")
-
-hist(df$W4_Conscientious_Total,
-     breaks = 10,
-     xlim = c(2,10),
-     ylim = c(0,1000),
-     xlab = " Conscientiousness Total",
-     main = "Histogram of Conscientiousness Total")
-
-### re-coding dependent variables into additive scale:
-
+```{r}
+# Table of 1st dependent measure before re-scaling
 table(df$W4_MigrantAttitudes1)
-# Define the transformation function
+
+# Define the transformation function used for re-scaling
 transform_likert <- function(x) {
   transformed_value <- ceiling(x / 2)
   return(transformed_value)}
 
-# Apply the transformation function to the data
+# Apply the transformation function to the measure
 df$W4_MigrantAttitudes1_rescaled <- transform_likert(df$W4_MigrantAttitudes1)
 
-# Print the transformed data
+# Print the transformed data to ensure it worked 
 table(df$W4_MigrantAttitudes1_rescaled)
 
 
+# Table of 2nd dependent measure before re-scaling
 table(df$W4_MigrantAttitudes2)
-# Apply the transformation function to the data
+
+# Apply the transformation function to the measure
 df$W4_MigrantAttitudes2_rescaled <- transform_likert(df$W4_MigrantAttitudes2)
 
-# Print the transformed data
+# Print the transformed data to ensure it worked 
 table(df$W4_MigrantAttitudes2_rescaled)
 
-
+# Create additive Dependent variable
 
 df$W4_TotalMigrantAttitudes <- rowSums(df[, c("W4_MigrantAttitudes1_rescaled", 
                                  "W4_MigrantAttitudes2_rescaled", 
@@ -163,12 +122,18 @@ df$W4_TotalMigrantAttitudes <- rowSums(df[, c("W4_MigrantAttitudes1_rescaled",
 
 summary(df$W4_TotalMigrantAttitudes)
 
+# Calculate cronach alpha
+
 dependent_data<-data.frame(df[, c("W4_MigrantAttitudes1_rescaled", 
                                "W4_MigrantAttitudes2_rescaled", 
                                "W4_Immigration_1", 
                                "W4_Immigration_1")])
 cronbach.alpha(dependent_data)
+```
 
+### Calculating cronbach alpha for independent variables:
+
+```{r}
 Extraversion_data<-data.frame(df[, c("W4_Personality1R",
                                      "W4_Personality6")])
 cronbach.alpha(Extraversion_data)
@@ -214,19 +179,27 @@ Conspiracy_data<-data.frame(df[, c("W4_Conspiracy_1",
                                  "W4_Conspiracy_4",
                                  "W4_Conspiracy_5")])
 cronbach.alpha(Conspiracy_data)
+```
 
+### Re-code independent variables:
 
+We need to re-format our variables to make them conducive for our descriptive statistics and OLS regression
+
+```{r}
+# Making Gender into a binary
 table(df$W4_Gender)
 df$W4_Gender_Binary<- NA
 df$W4_Gender_Binary[df$W4_Gender == 1] <- 1
 df$W4_Gender_Binary[df$W4_Gender == 2] <- 0
 table(df$W4_Gender_Binary)
 
+# Making visiable minority ino a binary
 table(df$W4_Ethnicity)
 df$W4_Visible_minority<- NA
 df$W4_Visible_minority<-ifelse(df$W4_Ethnicity == 1 | df$W4_Ethnicity == 2, 0,1)
 table(df$W4_Visible_minority)
 
+# Re-coding education into a catagorical variable
 table(df$W4_Education)
 df$W4_Education_categories<-NA
 df$W4_Education_categories[df$W4_Education == 1] <- "No Qualifications"
@@ -240,6 +213,7 @@ df$W4_Education_categories[df$W4_Education == 8] <- "Other"
 df$W4_Education_categories<- factor(df$W4_Education_categories, levels = c("No Qualifications", "O-Level/GCSE or A-Level or Technical qualification", "Undergraduate degree or Diploma","Postgraduate degree", "Other"))
 table(df$W4_Education_categories)
 
+# Re-coding education into a numerical catagorical variable
 table(df$W4_Education)
 df$W4_Education_categories_Num<-NA
 df$W4_Education_categories_Num[df$W4_Education == 1] <- "1"
@@ -253,6 +227,7 @@ df$W4_Education_categories_Num[df$W4_Education == 8] <- "5"
 df$W4_Education_categories_Num<- factor(df$W4_Education_categories_Num, levels = c(1, 2, 3, 4, 5))
 table(df$W4_Education_categories_Num)
 
+# Re-coding education into a numerical catagorical variable without other group
 table(df$W4_Education)
 df$W4_Education_categories_Num1<-NA
 df$W4_Education_categories_Num1[df$W4_Education == 1] <- "1"
@@ -265,6 +240,7 @@ df$W4_Education_categories_Num1[df$W4_Education == 7] <- "4"
 df$W4_Education_categories_Num1<- factor(df$W4_Education_categories_Num1, levels = c(1, 2, 3, 4))
 table(df$W4_Education_categories_Num1)
 
+# Re-coding employment into a catagorical variable
 table(df$W4_Employment)
 df$W4_Employment_categories<-NA
 df$W4_Employment_categories[df$W4_Employment == 1] <- "Employed"
@@ -280,6 +256,7 @@ df$W4_Employment_categories[df$W4_Employment == 10] <- "Student"
 df$W4_Employment_categories<- factor(df$W4_Employment_categories, levels = c("Unemployed", "Employed", "Other Situations", "Student"))
 table(df$W4_Employment_categories)
 
+# Re-coding employment into a numerical catagorical variable
 table(df$W4_Employment)
 df$W4_Employment_categories_Num<-NA
 df$W4_Employment_categories_Num[df$W4_Employment == 1] <- "1"
@@ -295,6 +272,7 @@ df$W4_Employment_categories_Num[df$W4_Employment == 10] <- "4"
 df$W4_Employment_categories_Num<- factor(df$W4_Employment_categories_Num, levels = c(2, 1, 3, 4))
 table(df$W4_Employment_categories_Num)
 
+## Re-coding Income into a  catagorical variable
 table(df$W4_Income_2019)
 df$W4_Income_2019_categories<-NA
 df$W4_Income_2019_categories[df$W4_Income_2019 == 1] <- "£0-15,490 per year"
@@ -304,11 +282,14 @@ df$W4_Income_2019_categories[df$W4_Income_2019 == 4] <- "£38,741-£57,930 per y
 df$W4_Income_2019_categories[df$W4_Income_2019 == 5] <- "£57,931 or more per year"
 df$W4_Income_2019_categories<- factor(df$W4_Income_2019_categories)
 table(df$W4_Income_2019_categories)
-
-table(df$W4_Political_scale)
+```
 
 ### Descriptive statistics:
 
+Now we need to create our descriptive statistics, we made a descriptive table and a correlation matrix
+
+```{r}
+# Create a df for variables in descriptive statistics table
 cor_df<-data.frame(df[, c("W4_Age_year",
                           "W4_Gender_Binary",
                           "W4_Visible_minority",
@@ -326,17 +307,16 @@ cor_df<-data.frame(df[, c("W4_Age_year",
                           "W4_Paranoia_Total",
                           "W4_Conspiracy_Total",
                           "W4_TotalMigrantAttitudes")])
-
-new_names <- c("Age (Years)", "Male", "Visible minority", "Education", "Employment", "Income", "Political scale", 
-               "Extraversion", "Agreeableness", "Conscientiousness", "Neuroticism", "Openness",
-               "Depression", "PTSD_dx", "Paranoia", "Conspiracy", "Migrant Attitudes")
+# Give them df new lables
+new_names <- c("Age (Years)", "Male", "Visible minority", "Education", "Employment", "Income", "Political scale", "Extraversion", "Agreeableness", "Conscientiousness", "Neuroticism", "Openness", "Depression", "PTSD_dx", "Paranoia", "Conspiracy", "Migrant Attitudes")
 names(cor_df) <- new_names
 
-### Descriptive Stats:
+
+### create Descriptive Stats and export to CSV:
 comprehensive_summary <- describe(cor_df, na.rm = T)
 write.csv(comprehensive_summary, "comprehensive_summary.csv")
 
-
+# Create a df for variables in correlation matrix table
 cor_df1<-data.frame(df[, c("W4_Age_year",
                           "W4_Gender_Binary",
                           "W4_Visible_minority",
@@ -363,26 +343,28 @@ cor_df1$W4_Income_2019_1 <- as.numeric(labels(cor_df1$W4_Income_2019)[cor_df1$W4
 # Convert 'W4_PTSDdx' from labelled variable to numeric
 cor_df1$W4_PTSDdx <- as.numeric(as.character(cor_df1$W4_PTSDdx))
 
-new_names1 <- c("Age (Years)", "Male", "Visible minority", "Education", "Income", "Political scale", 
-               "Extraversion", "Agreeableness", "Conscientiousness", "Neuroticism", "Openness",
-               "Depression", "PTSD_dx", "Paranoia", "Conspiracy", "Migrant Attitudes")
+# Give df new lables
+new_names1 <- c("Age (Years)", "Male", "Visible minority", "Education", "Income", "Political scale", "Extraversion", "Agreeableness", "Conscientiousness", "Neuroticism", "Openness","Depression", "PTSD_dx", "Paranoia", "Conspiracy", "Migrant Attitudes")
 names(cor_df1) <- new_names1
 
-
-
-
+# Create correlation matrix
 cor_matrix1 <- cor(cor_df1, use = "pairwise.complete.obs")
 # Calculate p-values for correlations
 p_values <- cor.mtest(cor_df1, conf.level = 0.95)$p
 
 # Create a correlation plot with colors, highlighting significant correlations
-corrplot(cor_matrix1, method = "color", type = "upper", tl.col = "black", tl.srt = 45, p.mat = p_values,sig.level = c(0.001, 0.01, 0.05), pch.cex = 0.9,
-         insig = 'label_sig', pch.col = 'grey20', order = "AOE",number.cex = 0.7, tl.cex = 0.7, mar = c(0,0,2,0))
+corrplot(cor_matrix1, method = "color", type = "upper", tl.col = "black", tl.srt = 45, p.mat = p_values,sig.level = c(0.001, 0.01, 0.05), pch.cex = 0.9, insig = 'label_sig', pch.col = 'grey20', order = "AOE",number.cex = 0.7, tl.cex = 0.7, mar = c(0,0,2,0))
+
+# Create a correlation plot with colors, highlighting  correlations coefficents
 corrplot(cor_matrix1, method = "color", type = "upper", tl.col = "black", tl.srt = 45,order = "AOE",number.cex = 0.7, tl.cex = 0.7,mar = c(0,0,2,0))$corrPos -> p1
 text(p1$x, p1$y, round(p1$corr, 2), cex = 0.5)
 
 
+```
 
+###  Create models:
+
+```{r}
 ### Linear models:
 
 m1<-lm(df$W4_TotalMigrantAttitudes ~ df$W4_Age_year + df$W4_Gender_Binary + df$W4_Visible_minority + df$W4_Education_categories + df$W4_Employment_categories + df$W4_Income_2019_categories + df$W4_Political_scale)
@@ -397,10 +379,21 @@ summary(m3)
 m4<-lm(df$W4_TotalMigrantAttitudes ~ df$W4_Age_year + df$W4_Gender_Binary + df$W4_Visible_minority + df$W4_Education_categories + df$W4_Employment_categories + df$W4_Income_2019_categories + df$W4_Political_scale + df$W4_Extraversion_Total + df$W4_Agreeable_Total + df$W4_Conscientious_Total + df$W4_Neuroticism_Total + df$W4_Openness_Total +df$W4_Dep_Total + df$W4_PTSDdx + df$W4_Paranoia_Total + df$W4_Conspiracy_Total )
 summary(m4)
 
+# Export the models
+
+stargazer(m1,m2,m3,m4)
+```
+
+### Calculate VIF:
+
+```{r}
 # Calculate VIF
 vif_values <- vif(m4)
 write.csv(vif_values, "vif_values.csv")
+```
 
-stargazer(m1,m2,m3,m4)
+### Assumption plots:
 
+```{r}
 plot(m4)
+```
